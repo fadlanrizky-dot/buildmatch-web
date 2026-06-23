@@ -681,7 +681,7 @@ function step8(){
     <div style="padding:18px 0;text-align:center;border-bottom:1px solid #F3F4F6">
       <p style="font-size:13px;font-weight:700;color:#6B7280;margin:0 0 12px">Berapa bintang untuk kontraktor ini?</p>
       <div id="star-row" style="display:flex;justify-content:center;gap:8px">${starsH}</div>
-      ${S.stars>0?`<div style="margin-top:10px;font-size:14px;font-weight:700;color:#111">${RLBL[S.stars]}</div>`:''}
+      <div id="star-label" style="margin-top:10px;font-size:14px;font-weight:700;color:#111">${S.stars>0?RLBL[S.stars]:''}</div>
     </div>
     <div style="padding:14px 0;border-bottom:1px solid #F3F4F6">
       <p style="font-size:12px;font-weight:700;color:#6B7280;margin:0 0 10px">Aspek yang memuaskan:</p>
@@ -693,7 +693,7 @@ function step8(){
     </div>
     <div style="background:#FFFBEB;border-radius:10px;padding:12px;margin-top:12px;display:flex;gap:10px">
       <span>📈</span>
-      <div style="font-size:12px;color:#92400E;line-height:1.5"><strong>Dampak Trust Score:</strong> ${S.stars>0?`${c.score}/100 → <strong style="color:${ns>c.score?'#16a34a':ns<c.score?'#DC2626':'#111'}">${ns}/100</strong> ${ns>c.score?'📈 Naik':ns<c.score?'📉 Turun':'→ Tetap'}`:'Pilih bintang untuk melihat dampak.'}</div>
+      <div style="font-size:12px;color:#92400E;line-height:1.5"><strong>Dampak Trust Score:</strong> <span id="trust-score-impact">${S.stars>0?`${c.score}/100 → <strong style="color:${ns>c.score?'#16a34a':ns<c.score?'#DC2626':'#111'}">${ns}/100</strong> ${ns>c.score?'📈 Naik':ns<c.score?'📉 Turun':'→ Tetap'}`:'Pilih bintang untuk melihat dampak.'}</span></div>
     </div>`,'margin-bottom:14px')}
     <button id="btn-submit" ${S.stars===0?'disabled':''} style="width:100%;padding:14px;border-radius:12px;border:none;background:${S.stars>0?'#F4B400':'#E5E7EB'};color:${S.stars>0?'#111':'#9CA3AF'};font-weight:700;font-size:15px;cursor:${S.stars>0?'pointer':'not-allowed'}">
       ${S.stars===0?'Pilih Bintang Terlebih Dahulu':'📤 Kirim Ulasan &amp; Selesaikan Proyek'}
@@ -950,6 +950,55 @@ function buildApp(){
   </div>`;
 }
 
+// Helper: update KYB next button validity without full render
+function refreshKybBtn(step){
+  if(step===1){
+    const btn=document.getElementById('btn-k1');
+    if(!btn) return;
+    const ktp=(document.getElementById('k-ktp')||{}).value||'';
+    const npwp=(document.getElementById('k-npwp')||{}).value||'';
+    const valid=ktp.trim()&&npwp.trim()&&S.kybSelfie;
+    btn.disabled=!valid;
+    btn.style.background=valid?'#F4B400':'#E5E7EB';
+    btn.style.color=valid?'#111':'#9CA3AF';
+    btn.style.cursor=valid?'pointer':'not-allowed';
+  } else if(step===2){
+    const btn=document.getElementById('btn-k2');
+    if(!btn) return;
+    const u=(document.getElementById('k-usaha')||{}).value||'';
+    const n=(document.getElementById('k-nib')||{}).value||'';
+    const valid=u.trim()&&n.trim()&&S.kybSiujk;
+    btn.disabled=!valid;
+    btn.style.background=valid?'#F4B400':'#E5E7EB';
+    btn.style.color=valid?'#111':'#9CA3AF';
+    btn.style.cursor=valid?'pointer':'not-allowed';
+  } else if(step===3){
+    const btn=document.getElementById('btn-k3');
+    if(!btn) return;
+    const pn=(document.getElementById('k-pname')||{}).value||'';
+    const pv=(document.getElementById('k-pval')||{}).value||'';
+    const valid=pn.trim()&&pv.trim()&&S.kybFoto;
+    btn.disabled=!valid;
+    btn.style.background=valid?'#111':'#E5E7EB';
+    btn.style.color=valid?'#F4B400':'#9CA3AF';
+    btn.style.cursor=valid?'pointer':'not-allowed';
+  }
+}
+
+// Helper: update step0 CTA button validity without full render
+function refreshStep0Btn(){
+  const btn=document.getElementById('btn-s0');
+  if(!btn) return;
+  const nama=(document.getElementById('p-nama')||{}).value||'';
+  const budget=(document.getElementById('p-budget')||{}).value||'';
+  const luas=(document.getElementById('p-luas')||{}).value||'';
+  const valid=nama.trim()&&budget.trim()&&luas.trim();
+  btn.disabled=!valid;
+  btn.style.background=valid?'#F4B400':'#E5E7EB';
+  btn.style.color=valid?'#111':'#9CA3AF';
+  btn.style.cursor=valid?'pointer':'not-allowed';
+}
+
 function render(){
   document.getElementById('app').innerHTML=buildApp();
   bindEvents();
@@ -993,20 +1042,35 @@ function bindEvents(){
   all('.dbtn',e=>{const b=e.currentTarget;mg({authEmail:b.dataset.de,authPass:b.dataset.dp});});
 
   // ── KYB ──
-  on('k-ktp','input',e=>{S.kybKtp=e.target.value;render();});
-  on('k-npwp','input',e=>{S.kybNpwp=e.target.value;render();});
+  on('k-ktp','input',e=>{S.kybKtp=e.target.value;refreshKybBtn(1);});
+  on('k-npwp','input',e=>{S.kybNpwp=e.target.value;refreshKybBtn(1);});
   on('up-selfie','click',()=>{S.kybSelfie=!S.kybSelfie;render();});
-  on('btn-k1','click',()=>{if(S.kybKtp.trim()&&S.kybNpwp.trim()&&S.kybSelfie)set('kybStep',2);});
-  on('k-usaha','input',e=>{S.kybUsaha=e.target.value;render();});
-  on('k-nib','input',e=>{S.kybNib=e.target.value;render();});
+  on('btn-k1','click',()=>{
+    const ktp=document.getElementById('k-ktp'),npwp=document.getElementById('k-npwp');
+    if(ktp) S.kybKtp=ktp.value;
+    if(npwp) S.kybNpwp=npwp.value;
+    if(S.kybKtp.trim()&&S.kybNpwp.trim()&&S.kybSelfie) set('kybStep',2);
+  });
+  on('k-usaha','input',e=>{S.kybUsaha=e.target.value;refreshKybBtn(2);});
+  on('k-nib','input',e=>{S.kybNib=e.target.value;refreshKybBtn(2);});
   on('up-siujk','click',()=>{S.kybSiujk=!S.kybSiujk;render();});
   on('btn-k2b','click',()=>set('kybStep',1));
-  on('btn-k2','click',()=>{if(S.kybUsaha.trim()&&S.kybNib.trim()&&S.kybSiujk)set('kybStep',3);});
-  on('k-pname','input',e=>{S.kybPName=e.target.value;render();});
-  on('k-pval','input',e=>{S.kybPVal=e.target.value;render();});
+  on('btn-k2','click',()=>{
+    const u=document.getElementById('k-usaha'),n=document.getElementById('k-nib');
+    if(u) S.kybUsaha=u.value;
+    if(n) S.kybNib=n.value;
+    if(S.kybUsaha.trim()&&S.kybNib.trim()&&S.kybSiujk) set('kybStep',3);
+  });
+  on('k-pname','input',e=>{S.kybPName=e.target.value;refreshKybBtn(3);});
+  on('k-pval','input',e=>{S.kybPVal=e.target.value;refreshKybBtn(3);});
   on('up-foto','click',()=>{S.kybFoto=!S.kybFoto;render();});
   on('btn-k3b','click',()=>set('kybStep',2));
-  on('btn-k3','click',()=>{if(S.kybPName.trim()&&S.kybPVal.trim()&&S.kybFoto)set('kybModal',true);});
+  on('btn-k3','click',()=>{
+    const pn=document.getElementById('k-pname'),pv=document.getElementById('k-pval');
+    if(pn) S.kybPName=pn.value;
+    if(pv) S.kybPVal=pv.value;
+    if(S.kybPName.trim()&&S.kybPVal.trim()&&S.kybFoto) set('kybModal',true);
+  });
   on('btn-kyb-done','click',()=>mg({kybModal:false,user:{...S.user,isVerified:true}}));
 
   // ── LOGOUT ──
@@ -1016,13 +1080,22 @@ function bindEvents(){
   all('[data-gs]',e=>{const i=parseInt(e.currentTarget.dataset.gs);if(i<S.step)set('step',i);});
 
   // ── STEP 0 ──
-  on('p-nama','input',e=>{S.project.nama=e.target.value;render();});
-  on('p-budget','input',e=>{S.project.budget=e.target.value;render();});
-  on('p-luas','input',e=>{S.project.luas=e.target.value;render();});
+  // Fix: text inputs only update state, NO render() — prevents focus loss on every keystroke
+  on('p-nama','input',e=>{S.project.nama=e.target.value;refreshStep0Btn();});
+  on('p-budget','input',e=>{S.project.budget=e.target.value;refreshStep0Btn();});
+  on('p-luas','input',e=>{S.project.luas=e.target.value;refreshStep0Btn();});
   on('p-waktu','input',e=>{S.project.waktu=e.target.value;});
   on('p-lokasi','change',e=>{S.project.lokasi=e.target.value;});
   on('p-jenis','change',e=>{S.project.jenis=e.target.value;});
   on('btn-s0','click',()=>{
+    // Read live values from DOM before navigating
+    const nama=$('p-nama'),budget=$('p-budget'),luas=$('p-luas');
+    if(nama) S.project.nama=nama.value;
+    if(budget) S.project.budget=budget.value;
+    if(luas) S.project.luas=luas.value;
+    const pw=$('p-waktu'); if(pw) S.project.waktu=pw.value;
+    const pl=$('p-lokasi'); if(pl) S.project.lokasi=pl.value;
+    const pj=$('p-jenis'); if(pj) S.project.jenis=pj.value;
     if((S.project.nama||'').trim()&&(S.project.budget||'').trim()&&(S.project.luas||'').trim())
       set('step',1);
   });
@@ -1056,12 +1129,41 @@ function bindEvents(){
   on('btn-s7','click',()=>set('step',8));
 
   // ── STEP 8 ──
+  // Fix: hover updates DOM directly without render() — no full rebuild on mouse move
   const sr=$('star-row');
-  if(sr) sr.querySelectorAll('.star').forEach(s=>{
-    s.addEventListener('mouseenter',()=>{S.hoverStar=parseInt(s.dataset.sn);render();});
-    s.addEventListener('mouseleave',()=>{S.hoverStar=0;render();});
-    s.addEventListener('click',()=>set('stars',parseInt(s.dataset.sn)));
-  });
+  if(sr){
+    const stars=sr.querySelectorAll('.star');
+    function paintStars(hov){
+      stars.forEach(s=>{
+        const n=parseInt(s.dataset.sn);
+        const lit=(hov||S.stars)>=n;
+        s.style.color=lit?'#F4B400':'#E5E7EB';
+        s.style.transform=lit?'scale(1.2)':'scale(1)';
+      });
+    }
+    stars.forEach(s=>{
+      s.addEventListener('mouseenter',()=>{S.hoverStar=parseInt(s.dataset.sn);paintStars(S.hoverStar);});
+      s.addEventListener('mouseleave',()=>{S.hoverStar=0;paintStars(0);});
+      s.addEventListener('click',()=>{
+        S.stars=parseInt(s.dataset.sn);
+        S.hoverStar=0;
+        // Only re-render to update label text & submit button state — stars already painted
+        const lbl=document.getElementById('star-label');
+        const RLBL=['','Sangat Buruk 😞','Buruk 😕','Cukup 😊','Bagus 😄','Luar Biasa! 🌟'];
+        if(lbl) lbl.textContent=RLBL[S.stars];
+        const sub=$('btn-submit');
+        if(sub){sub.disabled=false;sub.style.background='#F4B400';sub.style.color='#111';sub.style.cursor='pointer';sub.textContent='📤 Kirim Ulasan & Selesaikan Proyek';}
+        // Update trust score display
+        const tsi=document.getElementById('trust-score-impact');
+        if(tsi){
+          const c=S.contractor;
+          const ns=Math.min(100,c.score+(S.stars>=4?1:S.stars>0&&S.stars<=2?-1:0));
+          const col=ns>c.score?'#16a34a':ns<c.score?'#DC2626':'#111';
+          tsi.innerHTML=`${c.score}/100 → <strong style="color:${col}">${ns}/100</strong> ${ns>c.score?'📈 Naik':ns<c.score?'📉 Turun':'→ Tetap'}`;
+        }
+      });
+    });
+  }
   all('.chk',e=>{const k=e.currentTarget.dataset.ck;S.reviewChecks[k]=!S.reviewChecks[k];render();});
   on('rtxt','input',e=>{S.reviewText=e.target.value;});
   on('btn-submit','click',()=>{if(S.stars>0)set('submitted',true);});
@@ -1069,7 +1171,8 @@ function bindEvents(){
 
   // ── KONTRAKTOR DASH ──
   all('.kttab',e=>set('kTab',e.currentTarget.dataset.kt));
-  on('krep','input',e=>{S.kRepText=e.target.value;render();});
+  on('krep','input',e=>{S.kRepText=e.target.value;// no render — prevent focus loss
+    const btn=document.getElementById('btn-ksend');if(btn){btn.disabled=!e.target.value.trim();btn.style.background=e.target.value.trim()?'#F4B400':'#E5E7EB';btn.style.color=e.target.value.trim()?'#111':'#9CA3AF';btn.style.cursor=e.target.value.trim()?'pointer':'not-allowed';}});
   all('.kph',e=>{const i=parseInt(e.currentTarget.dataset.pi);if(!S.kRepSent){S.kPhotos=S.kPhotos.includes(i)?S.kPhotos.filter(x=>x!==i):[...S.kPhotos,i];render();}});
   on('btn-ksend','click',()=>{
     if(S.kRepText.trim()){
