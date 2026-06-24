@@ -42,6 +42,7 @@ const S={
   kybKtp:'',kybNpwp:'',kybSelfie:false,
   kybUsaha:'',kybNib:'',kybSiujk:false,
   kybPName:'',kybPVal:'',kybFoto:false,
+  kybPreviews:{},
   step:0,project:{},contractor:{},
   escrowDone:false,escrowStage:'idle',
   cart:[],matTab:'Semen',logCount:3,
@@ -281,16 +282,39 @@ function kybPage(){
   </div>`;
 
   function upbox(id,done,label,sub){
-    return`<div id="up-${id}" style="border:2px dashed ${done?'#16a34a':'#E5E7EB'};border-radius:12px;padding:16px;text-align:center;cursor:pointer;background:${done?'#F0FDF4':'#FAFAFA'};transition:all .15s">
-      <div style="font-size:28px;margin-bottom:6px">${done?'✅':'📎'}</div>
-      <p style="font-size:13px;font-weight:700;color:${done?'#166534':'#374151'};margin:0">${done?'File Terupload ✓':label}</p>
-      <p style="font-size:11px;color:${done?'#16a34a':'#9CA3AF'};margin:2px 0 0">${done?'Klik untuk ganti':sub}</p>
-    </div>`;
+    const preview = S.kybPreviews && S.kybPreviews[id];
+    const isImage = id==='selfie'||id==='foto';
+    // accept attribute: images only for selfie & foto, pdf+image for siujk
+    const accept = (id==='siujk') ? 'image/*,.pdf' : 'image/*';
+    if(preview){
+      // Show real preview
+      return`<div style="position:relative;border-radius:12px;overflow:hidden;border:2px solid #16a34a">
+        ${isImage
+          ? `<img src="${preview}" style="width:100%;height:140px;object-fit:cover;display:block">`
+          : `<div style="background:#F0FDF4;padding:20px;text-align:center"><div style="font-size:32px;margin-bottom:6px">📄</div><p style="font-size:13px;font-weight:700;color:#166534;margin:0">File Terupload ✓</p><p style="font-size:11px;color:#16a34a;margin:2px 0 0">Klik untuk ganti</p></div>`}
+        <div style="position:absolute;inset:0;background:rgba(0,0,0,.35);display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:10px">
+          <div style="background:#16a34a;border-radius:99px;padding:3px 12px;font-size:11px;font-weight:700;color:white;display:flex;align-items:center;gap:4px">✓ Upload Berhasil</div>
+        </div>
+        <label for="kyb-file-${id}" style="position:absolute;inset:0;cursor:pointer"></label>
+        <input type="file" id="kyb-file-${id}" data-kybid="${id}" class="kyb-file-input" accept="${accept}" style="display:none">
+      </div>`;
+    }
+    // Empty state — clean dropzone with hidden file input
+    return`<label for="kyb-file-${id}" style="border:2px dashed #E5E7EB;border-radius:12px;padding:20px 16px;text-align:center;cursor:pointer;background:#FAFAFA;display:block;transition:all .2s" id="up-${id}"
+      onmouseover="this.style.borderColor='#F4B400';this.style.background='#FFFBEB'"
+      onmouseout="this.style.borderColor='#E5E7EB';this.style.background='#FAFAFA'">
+      <div style="font-size:32px;margin-bottom:8px">📎</div>
+      <p style="font-size:13px;font-weight:700;color:#374151;margin:0">${label}</p>
+      <p style="font-size:11px;color:#9CA3AF;margin:4px 0 0">${sub}</p>
+      <div style="margin-top:10px;display:inline-flex;align-items:center;gap:6px;background:#111;color:#F4B400;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:700">📂 Pilih File dari Perangkat</div>
+      <input type="file" id="kyb-file-${id}" data-kybid="${id}" class="kyb-file-input" accept="${accept}" style="display:none">
+    </label>`;
   }
 
-  const can1=S.kybKtp.trim()&&S.kybNpwp.trim()&&S.kybSelfie;
-  const can2=S.kybUsaha.trim()&&S.kybNib.trim()&&S.kybSiujk;
-  const can3=S.kybPName.trim()&&S.kybPVal.trim()&&S.kybFoto;
+  const prev=S.kybPreviews||{};
+  const can1=S.kybKtp.trim()&&S.kybNpwp.trim()&&(S.kybSelfie||!!prev.selfie);
+  const can2=S.kybUsaha.trim()&&S.kybNib.trim()&&(S.kybSiujk||!!prev.siujk);
+  const can3=S.kybPName.trim()&&S.kybPVal.trim()&&(S.kybFoto||!!prev.foto);
 
   const st1=`<div style="display:flex;flex-direction:column;gap:16px">
     <div style="display:flex;gap:10px;align-items:flex-start">
@@ -1150,7 +1174,7 @@ function refreshKybBtn(step){
     if(!btn) return;
     const ktp=(document.getElementById('k-ktp')||{}).value||'';
     const npwp=(document.getElementById('k-npwp')||{}).value||'';
-    const valid=ktp.trim()&&npwp.trim()&&S.kybSelfie;
+    const valid=ktp.trim()&&npwp.trim()&&(S.kybSelfie||!!(S.kybPreviews&&S.kybPreviews.selfie));
     btn.disabled=!valid;
     btn.style.background=valid?'#F4B400':'#E5E7EB';
     btn.style.color=valid?'#111':'#9CA3AF';
@@ -1160,7 +1184,7 @@ function refreshKybBtn(step){
     if(!btn) return;
     const u=(document.getElementById('k-usaha')||{}).value||'';
     const n=(document.getElementById('k-nib')||{}).value||'';
-    const valid=u.trim()&&n.trim()&&S.kybSiujk;
+    const valid=u.trim()&&n.trim()&&(S.kybSiujk||!!(S.kybPreviews&&S.kybPreviews.siujk));
     btn.disabled=!valid;
     btn.style.background=valid?'#F4B400':'#E5E7EB';
     btn.style.color=valid?'#111':'#9CA3AF';
@@ -1170,7 +1194,7 @@ function refreshKybBtn(step){
     if(!btn) return;
     const pn=(document.getElementById('k-pname')||{}).value||'';
     const pv=(document.getElementById('k-pval')||{}).value||'';
-    const valid=pn.trim()&&pv.trim()&&S.kybFoto;
+    const valid=pn.trim()&&pv.trim()&&(S.kybFoto||!!(S.kybPreviews&&S.kybPreviews.foto));
     btn.disabled=!valid;
     btn.style.background=valid?'#111':'#E5E7EB';
     btn.style.color=valid?'#F4B400':'#9CA3AF';
@@ -1205,7 +1229,7 @@ function bindEvents(){
   const on=(id,ev,fn)=>{const el=$(id);if(el)el.addEventListener(ev,fn);};
   const all=(sel,fn,ev='click')=>document.querySelectorAll(sel).forEach(el=>el.addEventListener(ev,fn));
 
-  const RESET={user:null,step:0,project:{},contractor:{},escrowDone:false,escrowStage:'idle',cart:[],matTab:'Semen',logCount:3,stars:0,hoverStar:0,reviewText:'',reviewChecks:{waktu:false,kualitas:false,komunikasi:false,kebersihan:false},submitted:false,kTab:'proyek',kRepText:'',kPhotos:[],kPhotoData:{},kRepSent:false,kReps:[],sTab:'pesanan',adminTab:'overview',chatOpen:false,chatTarget:null,chatMsgs:{},chatInput:'',chatTyping:false,chatUnread:0};
+  const RESET={user:null,step:0,project:{},contractor:{},escrowDone:false,escrowStage:'idle',cart:[],matTab:'Semen',logCount:3,stars:0,hoverStar:0,reviewText:'',reviewChecks:{waktu:false,kualitas:false,komunikasi:false,kebersihan:false},submitted:false,kTab:'proyek',kRepText:'',kPhotos:[],kPhotoData:{},kRepSent:false,kReps:[],sTab:'pesanan',adminTab:'overview',kybPreviews:{},chatOpen:false,chatTarget:null,chatMsgs:{},chatInput:'',chatTyping:false,chatUnread:0};
 
   // ── AUTH ──
   on('tab-login','click',()=>mg({authTab:'login',authError:''}));
@@ -1237,7 +1261,35 @@ function bindEvents(){
   // ── KYB ──
   on('k-ktp','input',e=>{S.kybKtp=e.target.value;refreshKybBtn(1);});
   on('k-npwp','input',e=>{S.kybNpwp=e.target.value;refreshKybBtn(1);});
-  on('up-selfie','click',()=>{S.kybSelfie=!S.kybSelfie;render();});
+  // KYB real file upload via FileReader — no fake click-toggle
+  function bindKybFileInputs(){
+    document.querySelectorAll('.kyb-file-input').forEach(inp=>{
+      // Prevent double-binding
+      if(inp.dataset.bound) return;
+      inp.dataset.bound='1';
+      inp.addEventListener('change',function(){
+        const file=this.files[0];
+        const kybId=this.dataset.kybid; // 'selfie' | 'siujk' | 'foto'
+        if(!file) return;
+        const reader=new FileReader();
+        reader.onload=ev=>{
+          if(!S.kybPreviews) S.kybPreviews={};
+          S.kybPreviews[kybId]=ev.target.result;
+          // Mark boolean state
+          if(kybId==='selfie') S.kybSelfie=true;
+          else if(kybId==='siujk') S.kybSiujk=true;
+          else if(kybId==='foto') S.kybFoto=true;
+          // Re-render KYB page to show preview
+          render();
+          // Re-bind after render
+          setTimeout(bindKybFileInputs,0);
+        };
+        reader.readAsDataURL(file);
+      });
+    });
+  }
+  bindKybFileInputs();
+
   on('btn-k1','click',()=>{
     const ktp=document.getElementById('k-ktp'),npwp=document.getElementById('k-npwp');
     if(ktp) S.kybKtp=ktp.value;
@@ -1246,7 +1298,6 @@ function bindEvents(){
   });
   on('k-usaha','input',e=>{S.kybUsaha=e.target.value;refreshKybBtn(2);});
   on('k-nib','input',e=>{S.kybNib=e.target.value;refreshKybBtn(2);});
-  on('up-siujk','click',()=>{S.kybSiujk=!S.kybSiujk;render();});
   on('btn-k2b','click',()=>set('kybStep',1));
   on('btn-k2','click',()=>{
     const u=document.getElementById('k-usaha'),n=document.getElementById('k-nib');
@@ -1256,7 +1307,6 @@ function bindEvents(){
   });
   on('k-pname','input',e=>{S.kybPName=e.target.value;refreshKybBtn(3);});
   on('k-pval','input',e=>{S.kybPVal=e.target.value;refreshKybBtn(3);});
-  on('up-foto','click',()=>{S.kybFoto=!S.kybFoto;render();});
   on('btn-k3b','click',()=>set('kybStep',2));
   on('btn-k3','click',()=>{
     const pn=document.getElementById('k-pname'),pv=document.getElementById('k-pval');
@@ -1264,7 +1314,7 @@ function bindEvents(){
     if(pv) S.kybPVal=pv.value;
     if(S.kybPName.trim()&&S.kybPVal.trim()&&S.kybFoto) set('kybModal',true);
   });
-  on('btn-kyb-done','click',()=>mg({kybModal:false,user:{...S.user,isVerified:true}}));
+  on('btn-kyb-done','click',()=>mg({kybModal:false,user:{...S.user,isVerified:true},kybPreviews:{},kybSelfie:false,kybSiujk:false,kybFoto:false}));
 
   // ── LOGOUT ──
   on('btn-logout','click',()=>mg(RESET));
@@ -1478,6 +1528,9 @@ function bindEvents(){
   if(ca) ca.scrollTop=ca.scrollHeight;
   const sc=$('scont');
   if(sc) sc.scrollTop=0;
+
+  // Re-bind KYB file inputs after every render
+  if(typeof bindKybFileInputs==='function') bindKybFileInputs();
 }
 
 render();
