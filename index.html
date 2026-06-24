@@ -36,6 +36,7 @@ const S={
     {email:'konsumen@buildmatch.com',password:'123',role:'konsumen',name:'Andi Santoso'},
     {email:'kontraktor@buildmatch.com',password:'123',role:'kontraktor',name:'PT Karya Nusantara'},
     {email:'supplier@buildmatch.com',password:'123',role:'supplier',name:'PT Indocement Tunggal'},
+    {email:'admin@buildmatch.com',password:'admin123',role:'admin',name:'Tim Management BuildMatch'},
   ],
   kybStep:1,kybModal:false,
   kybKtp:'',kybNpwp:'',kybSelfie:false,
@@ -45,8 +46,8 @@ const S={
   escrowDone:false,escrowStage:'idle',
   cart:[],matTab:'Semen',logCount:3,
   stars:0,hoverStar:0,reviewText:'',reviewChecks:{waktu:false,kualitas:false,komunikasi:false,kebersihan:false},submitted:false,
-  kTab:'proyek',kRepText:'',kPhotos:[],kRepSent:false,kReps:[],
-  sTab:'pesanan',deliveries:null,
+  kTab:'proyek',kRepText:'',kPhotos:[],kPhotoData:{},kRepSent:false,kReps:[],
+  sTab:'pesanan',deliveries:null,adminTab:'overview',
   chatOpen:false,chatTarget:null,chatMsgs:{},chatInput:'',chatTyping:false,chatUnread:0,
 };
 function set(k,v){S[k]=v;render();}
@@ -219,7 +220,7 @@ function authPage(){
     ${btnY('🔑 Masuk ke BuildMatch','btn-login')}
     <div style="background:#F9FAFB;border-radius:10px;padding:12px">
       <p style="font-size:11px;font-weight:700;color:#6B7280;margin:0 0 6px">💡 Akun Demo Presentasi:</p>
-      ${S.accounts.slice(0,3).map(a=>`<button data-de="${esc(a.email)}" data-dp="${esc(a.password)}" class="dbtn" style="display:block;width:100%;text-align:left;background:none;border:none;cursor:pointer;padding:3px 0;font-size:12px;color:#374151">→ ${esc(a.email)} / ${a.password} <span style="color:#9CA3AF">(${a.role})</span></button>`).join('')}
+      ${S.accounts.slice(0,4).map(a=>`<button data-de="${esc(a.email)}" data-dp="${esc(a.password)}" class="dbtn" style="display:block;width:100%;text-align:left;background:none;border:none;cursor:pointer;padding:3px 0;font-size:12px;color:#374151">→ ${esc(a.email)} / ${a.password} <span style="color:#9CA3AF">(${a.role})</span></button>`).join('')}
     </div>
   </div>`;
 
@@ -365,9 +366,9 @@ function kybPage(){
 // ================================================================
 function topNav(){
   const u=S.user;
-  const rb=u?.role==='konsumen'?'#DBEAFE':u?.role==='kontraktor'?'#DCFCE7':'#FEF3C7';
-  const rc=u?.role==='konsumen'?'#1E40AF':u?.role==='kontraktor'?'#166534':'#92400E';
-  const rl=u?.role==='konsumen'?'👤 Konsumen':u?.role==='kontraktor'?'👷 Kontraktor':'📦 Supplier';
+  const rb=u?.role==='konsumen'?'#DBEAFE':u?.role==='kontraktor'?'#DCFCE7':u?.role==='admin'?'#EDE9FE':'#FEF3C7';
+  const rc=u?.role==='konsumen'?'#1E40AF':u?.role==='kontraktor'?'#166534':u?.role==='admin'?'#6D28D9':'#92400E';
+  const rl=u?.role==='konsumen'?'👤 Konsumen':u?.role==='kontraktor'?'👷 Kontraktor':u?.role==='admin'?'🛡️ Management':'📦 Supplier';
   const stH=SLABELS.map((l,i)=>{
     const act=i===S.step,done=i<S.step;
     return`<button data-gs="${i}" style="flex-shrink:0;font-size:11px;padding:4px 10px;border-radius:99px;font-weight:600;border:none;cursor:${done?'pointer':'default'};background:${act?'#111':done?'#DCFCE7':'#F3F4F6'};color:${act?'#F4B400':done?'#166534':'#9CA3AF'};transition:all .2s">${done?'✓ ':''}${i+1}. ${l}</button>`;
@@ -702,6 +703,185 @@ function step8(){
 }
 
 // ================================================================
+// DASHBOARD ADMIN / MANAGEMENT
+// ================================================================
+function dashAdmin(){
+  const u=S.user, t=S.adminTab||'overview';
+
+  // Mock KYB pending data
+  const KYB_PENDING=[
+    {id:'KYB-001',name:'CV Bangun Sejahtera',owner:'Eko Prasetyo',ktp:'3201234567890001',nib:'1234567891011',submitted:'10 Jun 2025',status:'pending'},
+    {id:'KYB-002',name:'PT Graha Prima',owner:'Siti Rahayu',ktp:'3276543210987654',nib:'9876543210123',submitted:'11 Jun 2025',status:'pending'},
+    {id:'KYB-003',name:'UD Maju Bersama',owner:'Budi Hartono',ktp:'3578901234567890',nib:'1122334455667',submitted:'12 Jun 2025',status:'approved'},
+    {id:'KYB-004',name:'CV Karya Utama',owner:'Dewi Lestari',ktp:'3301234509876543',nib:'7788990011223',submitted:'13 Jun 2025',status:'rejected'},
+  ];
+
+  // Mock fraud/security log
+  const FRAUD_LOG=[
+    {id:'SEC-441',type:'Phishing Link',user:'kontraktor_palsu@gmail.com',ip:'192.168.12.44',time:'14 Jun 2025 09:12',risk:'Tinggi',frozen:false},
+    {id:'SEC-440',type:'Login Brute Force',user:'unknown@xmail.ru',ip:'45.33.12.190',time:'13 Jun 2025 23:58',risk:'Kritis',frozen:true},
+    {id:'SEC-439',type:'Duplicate NIB',user:'cv_abal@test.com',ip:'103.55.21.9',time:'13 Jun 2025 14:30',risk:'Sedang',frozen:false},
+    {id:'SEC-438',type:'Fake Portfolio Upload',user:'pemborong99@mail.id',ip:'10.0.0.55',time:'12 Jun 2025 11:05',risk:'Tinggi',frozen:true},
+  ];
+
+  // Mock escrow queue
+  const ESCROW_QUEUE=[
+    {id:'ESC-201',project:'Rumah Type 120 — BSD City',kontraktor:'PT Karya Nusantara',milestone:'Pondasi',amount:60000000,owner:'Andi Santoso',verified:true,status:'awaiting'},
+    {id:'ESC-202',project:'Ruko 3 Lantai — Serpong',kontraktor:'Mitra Bangun Jaya',milestone:'Struktur',amount:135000000,owner:'Rina Wijaya',verified:true,status:'released'},
+    {id:'ESC-203',project:'Villa Bali Selatan',kontraktor:'Bangun Prima Group',milestone:'Atap',amount:80000000,owner:'Hendra Saputra',verified:false,status:'awaiting'},
+  ];
+
+  const nav=`<div style="background:#4C1D95;padding:10px 20px;position:sticky;top:0;z-index:100"><div style="display:flex;align-items:center;gap:12px;max-width:960px;margin:0 auto">
+    ${logo('sm')}
+    <span style="background:#EDE9FE;color:#6D28D9;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:700;flex-shrink:0">🛡️ Management</span>
+    <div style="flex:1"></div>
+    <span style="font-size:12px;color:#C4B5FD;font-weight:600">👤 Halo, <strong style="color:#F5F3FF">${esc(u?.name||u?.email)}</strong></span>
+    <button id="btn-logout" style="font-size:12px;font-weight:700;padding:6px 14px;border-radius:99px;border:1.5px solid rgba(255,255,255,.25);background:transparent;color:#C4B5FD;cursor:pointer">⏏ Keluar</button>
+  </div></div>`;
+
+  const tabbar=`<div style="background:#fff;border-bottom:1px solid #E5E7EB;padding:0 20px"><div style="display:flex;max-width:960px;margin:0 auto;overflow-x:auto">
+    ${[{k:'overview',l:'📊 Overview'},{k:'kyb',l:'✅ Verifikasi KYB'},{k:'security',l:'🚨 Keamanan'},{k:'escrow',l:'💰 Manajemen Escrow'}].map(tb=>`<button data-at="${tb.k}" class="adtab" style="padding:12px 16px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:600;border-bottom:2.5px solid ${t===tb.k?'#7C3AED':'transparent'};color:${t===tb.k?'#4C1D95':'#6B7280'};white-space:nowrap;transition:all .15s">${tb.l}</button>`).join('')}
+  </div></div>`;
+
+  let content='';
+
+  // ── OVERVIEW ──
+  if(t==='overview'){
+    const metrics=[
+      {icon:'👥',label:'Total Pengguna Terdaftar',value:'3',sub:'Konsumen, Kontraktor, Supplier',bg:'#EFF6FF',bc:'#BFDBFE',vc:'#1E40AF'},
+      {icon:'✅',label:'Kontraktor Terverifikasi',value:'2',sub:'1 pending review',bg:'#F0FDF4',bc:'#BBF7D0',vc:'#166534'},
+      {icon:'💰',label:'Total Dana di Escrow',value:'Rp 4.2 M',sub:'Dari 12 proyek aktif',bg:'#FFFBEB',bc:'#FCD34D',vc:'#92400E'},
+      {icon:'🚨',label:'Laporan Isu Keamanan',value:'4',sub:'2 belum ditangani',bg:'#FFF1F2',bc:'#FECDD3',vc:'#9F1239'},
+    ];
+    content=`<div style="display:flex;flex-direction:column;gap:20px">
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px">
+        ${metrics.map(m=>`<div style="background:${m.bg};border:1.5px solid ${m.bc};border-radius:16px;padding:18px">
+          <div style="font-size:28px;margin-bottom:8px">${m.icon}</div>
+          <div style="font-size:24px;font-weight:900;color:${m.vc};letter-spacing:-0.5px">${m.value}</div>
+          <div style="font-size:13px;font-weight:700;color:#111;margin-top:2px">${m.label}</div>
+          <div style="font-size:11px;color:#6B7280;margin-top:2px">${m.sub}</div>
+        </div>`).join('')}
+      </div>
+      ${card(`<p style="font-weight:700;font-size:13px;color:#111;margin:0 0 14px">📋 Aktivitas Terkini</p>
+        ${[
+          {t:'KYB Baru',d:'CV Bangun Sejahtera mengajukan verifikasi',time:'10 mnt lalu',dot:'#F4B400'},
+          {t:'Escrow Cair',d:'Dana Pondasi Rp 60Jt ke PT Karya Nusantara',time:'2 jam lalu',dot:'#16a34a'},
+          {t:'Login Mencurigakan',d:'Brute force dari IP 45.33.12.190 — diblokir',time:'14 jam lalu',dot:'#DC2626'},
+          {t:'Kontraktor Baru',d:'PT Graha Prima mendaftar, menunggu KYB',time:'1 hari lalu',dot:'#6B7280'},
+        ].map(a=>`<div style="display:flex;gap:12px;padding:8px 0;border-bottom:1px solid #F9FAFB;align-items:flex-start">
+          <div style="width:8px;height:8px;border-radius:50%;background:${a.dot};flex-shrink:0;margin-top:5px"></div>
+          <div style="flex:1"><p style="font-size:13px;font-weight:600;color:#111;margin:0">${a.t}</p><p style="font-size:12px;color:#6B7280;margin:2px 0 0">${a.d}</p></div>
+          <span style="font-size:11px;color:#9CA3AF;flex-shrink:0">${a.time}</span>
+        </div>`).join('')}`)}
+    </div>`;
+  }
+
+  // ── KYB VERIFICATION MODULE ──
+  else if(t==='kyb'){
+    const statusStyle={pending:{bg:'#FEF9C3',cl:'#854D0E',label:'Menunggu Review'},approved:{bg:'#DCFCE7',cl:'#166534',label:'Disetujui'},rejected:{bg:'#FEE2E2',cl:'#991B1B',label:'Ditolak'}};
+    content=`<div style="display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <h2 style="font-size:17px;font-weight:900;color:#111;margin:0">Antrian Verifikasi KYB Kontraktor</h2>
+        <span style="font-size:12px;color:#6B7280">${KYB_PENDING.filter(k=>k.status==='pending').length} perlu ditinjau</span>
+      </div>
+      ${KYB_PENDING.map(k=>{
+        const ss=statusStyle[k.status];
+        return`<div style="background:#fff;border-radius:14px;border:1px solid #E5E7EB;padding:18px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+            <div>
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                <span style="font-weight:800;font-size:15px;color:#111">${k.name}</span>
+                <span style="background:${ss.bg};color:${ss.cl};padding:2px 10px;border-radius:99px;font-size:11px;font-weight:700">${ss.label}</span>
+              </div>
+              <p style="font-size:12px;color:#6B7280;margin:3px 0 0">👤 Direktur: ${k.owner} · Pengajuan: ${k.submitted}</p>
+            </div>
+            <span style="font-size:11px;color:#9CA3AF;font-weight:600">${k.id}</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+            ${[['KTP Direktur',k.ktp,'🪪'],['NIB Perusahaan',k.nib,'🏢']].map(([label,val,ic])=>`<div style="background:#F9FAFB;border-radius:10px;padding:10px 12px">
+              <div style="font-size:11px;color:#9CA3AF">${ic} ${label}</div>
+              <div style="font-size:13px;font-weight:700;color:#111;margin-top:2px;font-family:monospace;letter-spacing:.5px">${val}</div>
+              <div style="display:flex;align-items:center;gap:4px;margin-top:4px"><div style="width:6px;height:6px;border-radius:50%;background:#16a34a"></div><span style="font-size:10px;color:#166534;font-weight:600">Tervalidasi Dukcapil</span></div>
+            </div>`).join('')}
+          </div>
+          ${k.status==='pending'?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <button data-kyb-reject="${k.id}" class="btn-kyb-action" style="padding:10px;border-radius:10px;border:1.5px solid #FECACA;background:#FEF2F2;color:#DC2626;font-weight:700;font-size:13px;cursor:pointer">❌ Tolak Pengajuan</button>
+            <button data-kyb-approve="${k.id}" class="btn-kyb-action" style="padding:10px;border-radius:10px;border:none;background:#16a34a;color:white;font-weight:700;font-size:13px;cursor:pointer">✅ Setujui & Verifikasi</button>
+          </div>`:`<div style="background:${k.status==='approved'?'#F0FDF4':'#FEF2F2'};border-radius:10px;padding:10px 12px;text-align:center;font-size:13px;font-weight:600;color:${k.status==='approved'?'#166534':'#DC2626'}">${k.status==='approved'?'✅ Sudah Disetujui — Kontraktor Aktif di Marketplace':'❌ Pengajuan Ditolak — Kontraktor Diminta Revisi Dokumen'}</div>`}
+        </div>`;
+      }).join('')}
+    </div>`;
+  }
+
+  // ── SECURITY CENTER ──
+  else if(t==='security'){
+    const riskColor={Tinggi:'#DC2626',Kritis:'#7F1D1D',Sedang:'#D97706'};
+    const riskBg={Tinggi:'#FEE2E2',Kritis:'#FCA5A5',Sedang:'#FEF9C3'};
+    content=`<div style="display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <h2 style="font-size:17px;font-weight:900;color:#111;margin:0">🚨 Pusat Mitigasi Keamanan</h2>
+        <span style="background:#FEE2E2;color:#DC2626;padding:4px 12px;border-radius:99px;font-size:12px;font-weight:700">${FRAUD_LOG.filter(f=>!f.frozen).length} ancaman aktif</span>
+      </div>
+      ${infobox('⚠️','Sistem AI BuildMatch memantau aktivitas mencurigakan secara real-time. Bekukan akun yang terindikasi fraud untuk mencegah kerugian lebih lanjut.','#FFF1F2','#9F1239')}
+      ${FRAUD_LOG.map(f=>`<div style="background:#fff;border-radius:14px;border:1.5px solid ${f.frozen?'#E5E7EB':'#FECACA'};padding:16px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <span style="font-weight:800;font-size:14px;color:#111">${f.type}</span>
+              <span style="background:${riskBg[f.risk]||'#F3F4F6'};color:${riskColor[f.risk]||'#374151'};padding:2px 10px;border-radius:99px;font-size:11px;font-weight:700">🔥 Risiko ${f.risk}</span>
+              ${f.frozen?`<span style="background:#F3F4F6;color:#6B7280;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:700">❄️ Akun Dibekukan</span>`:''}
+            </div>
+            <p style="font-size:12px;color:#6B7280;margin:3px 0 0">📧 ${f.user}</p>
+          </div>
+          <span style="font-size:11px;color:#9CA3AF;font-weight:600;text-align:right">${f.id}<br>${f.time}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+          ${[['IP Address',f.ip,'🌐'],['Waktu Deteksi',f.time,'⏱️']].map(([l,v,i])=>`<div style="background:#F9FAFB;border-radius:8px;padding:8px 10px"><div style="font-size:10px;color:#9CA3AF">${i} ${l}</div><div style="font-size:12px;font-weight:700;color:#111;margin-top:1px;font-family:monospace">${v}</div></div>`).join('')}
+        </div>
+        ${!f.frozen?`<button data-freeze-id="${f.id}" class="btn-freeze" style="width:100%;padding:9px;border-radius:9px;border:none;background:#111;color:#F4B400;font-weight:700;font-size:13px;cursor:pointer">❄️ Bekukan Akun Ini</button>`
+        :`<div style="background:#F3F4F6;border-radius:9px;padding:9px;text-align:center;font-size:13px;color:#6B7280;font-weight:600">✅ Akun sudah dibekukan — tidak dapat login</div>`}
+      </div>`).join('')}
+    </div>`;
+  }
+
+  // ── ESCROW MANAGEMENT ──
+  else if(t==='escrow'){
+    content=`<div style="display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <h2 style="font-size:17px;font-weight:900;color:#111;margin:0">💰 Manajemen Dana Escrow</h2>
+        <div style="background:#111;color:#F4B400;padding:6px 14px;border-radius:99px;font-size:12px;font-weight:700">Total: Rp 4.2 Miliar</div>
+      </div>
+      ${infobox('🔒','Dana escrow hanya dapat dilepas setelah Tim Management mengkonfirmasi verifikasi fisik lapangan oleh inspektor BuildMatch.','#F0FDF4','#166534')}
+      ${ESCROW_QUEUE.map(e=>`<div style="background:#fff;border-radius:14px;border:1px solid #E5E7EB;padding:18px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <span style="font-weight:800;font-size:14px;color:#111">${e.project}</span>
+              <span style="background:${e.status==='released'?'#DCFCE7':'#FEF9C3'};color:${e.status==='released'?'#166534':'#854D0E'};padding:2px 10px;border-radius:99px;font-size:11px;font-weight:700">${e.status==='released'?'✅ Dana Dicairkan':'⏳ Menunggu Persetujuan'}</span>
+            </div>
+            <p style="font-size:12px;color:#6B7280;margin:3px 0 0">👷 ${e.kontraktor} · 👤 Owner: ${e.owner}</p>
+          </div>
+          <span style="font-size:11px;color:#9CA3AF;font-weight:600">${e.id}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px">
+          ${[['Milestone',e.milestone,'🏗️'],['Jumlah Dana','Rp '+e.amount.toLocaleString('id-ID'),'💰'],['Verifikasi Fisik',e.verified?'Lulus ✓':'Belum','🔍']].map(([l,v,i])=>`<div style="background:#F9FAFB;border-radius:10px;padding:10px 12px"><div style="font-size:11px;color:#9CA3AF">${i} ${l}</div><div style="font-size:13px;font-weight:700;color:${l==='Verifikasi Fisik'&&!e.verified?'#DC2626':'#111'};margin-top:2px">${v}</div></div>`).join('')}
+        </div>
+        ${e.status==='awaiting'?(e.verified
+          ?`<button data-release-id="${e.id}" class="btn-release" style="width:100%;padding:10px;border-radius:10px;border:none;background:#F4B400;color:#111;font-weight:700;font-size:14px;cursor:pointer">💸 Setujui & Cairkan Dana ke Kontraktor</button>`
+          :`<div style="background:#FEF2F2;border-radius:10px;padding:10px 12px;text-align:center;font-size:13px;color:#DC2626;font-weight:600">⚠️ Verifikasi fisik belum selesai — pencairan ditahan</div>`)
+        :`<div style="background:#F0FDF4;border-radius:10px;padding:10px 12px;text-align:center;font-size:13px;color:#166534;font-weight:600">✅ Dana sudah dicairkan ke rekening kontraktor</div>`}
+      </div>`).join('')}
+    </div>`;
+  }
+
+  return`<div style="min-height:100vh;background:#F5F5F5;display:flex;flex-direction:column">${nav}${tabbar}
+    <div style="flex:1;overflow-y:auto;padding-bottom:80px"><div style="max-width:760px;margin:0 auto;padding:24px 16px">${content}</div></div>
+    ${chatWidget()}
+  </div>`;
+}
+
+
+// ================================================================
 // DASHBOARD KONTRAKTOR
 // ================================================================
 function dashK(){
@@ -745,13 +925,25 @@ function dashK(){
       <div style="margin-bottom:14px">${lbl('Deskripsi Progres Hari Ini')}
         <textarea id="krep" rows="4" ${sent?'disabled':''} placeholder="cth. Pengecoran 80% selesai. Tim aktif 8 orang." style="width:100%;border:1.5px solid #E5E7EB;border-radius:10px;padding:10px 14px;font-size:13px;font-family:inherit;background:${sent?'#F9FAFB':'white'}">${esc(S.kRepText)}</textarea>
       </div>
-      <div style="margin-bottom:18px">${lbl('Upload Foto Lapangan')}
+      <div id="photo-count-wrap" style="margin-bottom:18px">${lbl('Upload Foto Lapangan')}
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
-          ${KPH.map((ph,i)=>{const sel=S.kPhotos.includes(i);return`<div data-pi="${i}" class="kph" style="background:${sel?'#FFFBEB':'#F9FAFB'};border:2px solid ${sel?'#F4B400':'#E5E7EB'};border-radius:10px;height:70px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:${sent?'default':'pointer'}"><span style="font-size:22px">${ph.split(' ')[0]}</span><span style="font-size:9px;color:#6B7280;margin-top:3px">${ph.split(' ')[1]||''}</span>${sel?`<span style="font-size:9px;font-weight:700;color:#92400E">✓</span>`:''}</div>`;}).join('')}
+          ${KPH.map((ph,i)=>{
+    const uploaded=S.kPhotoData&&S.kPhotoData[i];
+    const phLabel=ph.split(' ').slice(1).join(' ');
+    const phIcon=ph.split(' ')[0];
+    return`<div style="position:relative">
+      <input type="file" accept="image/*" id="kph-file-${i}" data-idx="${i}" class="kph-file-input" style="display:none" ${sent?'disabled':''}>
+      <label for="kph-file-${i}" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:80px;border-radius:10px;border:2px solid ${uploaded?'#16a34a':'#E5E7EB'};background:${uploaded?'#F0FDF4':'#F9FAFB'};cursor:${sent?'default':'pointer'};overflow:hidden;position:relative;transition:all .2s">
+        ${uploaded
+          ?`<img src="${uploaded}" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`
+          :`<span style="font-size:22px">${phIcon}</span><span style="font-size:9px;color:#6B7280;margin-top:3px;text-align:center;padding:0 2px">${phLabel}</span><span style="font-size:9px;color:#9CA3AF">Pilih foto</span>`}
+        ${uploaded?`<div style="position:absolute;top:3px;right:3px;background:#16a34a;border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;font-size:9px;color:white">✓</div>`:''}
+      </label>
+    </div>`;}).join('')}
         </div>
-        ${S.kPhotos.length?`<p style="font-size:12px;color:#92400E;margin:6px 0 0">📎 ${S.kPhotos.length} foto dipilih</p>`:''}
+        ${Object.keys(S.kPhotoData||{}).length?`<p style="font-size:12px;color:#16a34a;margin:6px 0 0">📎 ${Object.keys(S.kPhotoData||{}).length} foto berhasil diunggah</p>`:''}
       </div>
-      ${!sent?`<button id="btn-ksend" ${!S.kRepText.trim()?'disabled':''} style="width:100%;padding:13px;border-radius:12px;border:none;background:${S.kRepText.trim()?'#F4B400':'#E5E7EB'};color:${S.kRepText.trim()?'#111':'#9CA3AF'};font-weight:700;font-size:15px;cursor:${S.kRepText.trim()?'pointer':'not-allowed'}">📤 Kirim Laporan Progres</button>`
+      ${!sent?`<button id="btn-ksend" ${!S.kRepText.trim()?'disabled':''} style="width:100%;padding:13px;border-radius:12px;border:none;background:${S.kRepText.trim()?'#F4B400':'#E5E7EB'};color:${S.kRepText.trim()?'#111':'#9CA3AF'};font-weight:700;font-size:15px;cursor:${S.kRepText.trim()?'pointer':'not-allowed'}">📤 Kirim Laporan (${Object.keys(S.kPhotoData||{}).length} Foto)</button>`
       :`<div><div style="background:#DCFCE7;border-radius:12px;padding:16px;text-align:center;margin-bottom:12px"><div style="font-size:32px;margin-bottom:6px">✅</div><p style="font-weight:800;color:#166534;margin:0">Laporan Berhasil Dikirim!</p><p style="font-size:12px;color:#166534;margin:4px 0 0">Owner dan tim verifikasi BuildMatch telah menerima laporan Anda.</p></div>
       <button id="btn-knew" style="width:100%;padding:11px;border-radius:12px;border:1.5px solid #E5E7EB;background:white;font-weight:700;font-size:14px;cursor:pointer;color:#374151">+ Kirim Laporan Baru</button></div>`}`);
   } else {
@@ -942,6 +1134,7 @@ function buildApp(){
   if(u.role==='kontraktor'&&!u.isVerified) return kybPage();
   if(u.role==='supplier') return dashS();
   if(u.role==='kontraktor') return dashK();
+  if(u.role==='admin') return dashAdmin();
   const STEPS=[step0,step1,step2,step3,step4,step5,step6,step7,step8];
   return`<div style="min-height:100vh;background:#F5F5F5;display:flex;flex-direction:column">
     ${topNav()}
@@ -1012,7 +1205,7 @@ function bindEvents(){
   const on=(id,ev,fn)=>{const el=$(id);if(el)el.addEventListener(ev,fn);};
   const all=(sel,fn,ev='click')=>document.querySelectorAll(sel).forEach(el=>el.addEventListener(ev,fn));
 
-  const RESET={user:null,step:0,project:{},contractor:{},escrowDone:false,escrowStage:'idle',cart:[],matTab:'Semen',logCount:3,stars:0,hoverStar:0,reviewText:'',reviewChecks:{waktu:false,kualitas:false,komunikasi:false,kebersihan:false},submitted:false,kTab:'proyek',kRepText:'',kPhotos:[],kRepSent:false,kReps:[],sTab:'pesanan',chatOpen:false,chatTarget:null,chatMsgs:{},chatInput:'',chatTyping:false,chatUnread:0};
+  const RESET={user:null,step:0,project:{},contractor:{},escrowDone:false,escrowStage:'idle',cart:[],matTab:'Semen',logCount:3,stars:0,hoverStar:0,reviewText:'',reviewChecks:{waktu:false,kualitas:false,komunikasi:false,kebersihan:false},submitted:false,kTab:'proyek',kRepText:'',kPhotos:[],kPhotoData:{},kRepSent:false,kReps:[],sTab:'pesanan',adminTab:'overview',chatOpen:false,chatTarget:null,chatMsgs:{},chatInput:'',chatTyping:false,chatUnread:0};
 
   // ── AUTH ──
   on('tab-login','click',()=>mg({authTab:'login',authError:''}));
@@ -1027,7 +1220,7 @@ function bindEvents(){
   on('btn-login','click',()=>{
     const f=S.accounts.find(a=>a.email.toLowerCase()===S.authEmail.trim().toLowerCase()&&a.password===S.authPass);
     if(!f){set('authError','Email atau password salah!');return;}
-    mg({user:{email:f.email,name:f.name,role:f.role,isVerified:true},authError:''});
+    mg({user:{email:f.email,name:f.name,role:f.role,isVerified:true},authError:'',adminTab:'overview'});
   });
   on('btn-register','click',()=>{
     const {authName:n,authEmail:e,authPass:p,authRole:r,accounts:ac}=S;
@@ -1173,14 +1366,90 @@ function bindEvents(){
   all('.kttab',e=>set('kTab',e.currentTarget.dataset.kt));
   on('krep','input',e=>{S.kRepText=e.target.value;// no render — prevent focus loss
     const btn=document.getElementById('btn-ksend');if(btn){btn.disabled=!e.target.value.trim();btn.style.background=e.target.value.trim()?'#F4B400':'#E5E7EB';btn.style.color=e.target.value.trim()?'#111':'#9CA3AF';btn.style.cursor=e.target.value.trim()?'pointer':'not-allowed';}});
-  all('.kph',e=>{const i=parseInt(e.currentTarget.dataset.pi);if(!S.kRepSent){S.kPhotos=S.kPhotos.includes(i)?S.kPhotos.filter(x=>x!==i):[...S.kPhotos,i];render();}});
+  // Real file upload with FileReader preview
+  document.querySelectorAll('.kph-file-input').forEach(inp=>{
+    inp.addEventListener('change',function(e){
+      const idx=parseInt(this.dataset.idx);
+      const file=e.target.files[0];
+      if(!file||S.kRepSent) return;
+      const reader=new FileReader();
+      reader.onload=ev=>{
+        if(!S.kPhotoData) S.kPhotoData={};
+        S.kPhotoData[idx]=ev.target.result;
+        S.kPhotos=[...new Set([...S.kPhotos,idx])];
+        // Update preview in-place without full render
+        const lbl=document.querySelector(`label[for="kph-file-${idx}"]`);
+        if(lbl){
+          lbl.style.borderColor='#16a34a';
+          lbl.style.background='#F0FDF4';
+          lbl.innerHTML=`<img src="${ev.target.result}" style="width:100%;height:100%;object-fit:cover;border-radius:8px"><div style="position:absolute;top:3px;right:3px;background:#16a34a;border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;font-size:9px;color:white">✓</div>`;
+        }
+        // Update count display
+        const cnt=document.getElementById('photo-count-display');
+        const total=Object.keys(S.kPhotoData||{}).length;
+        if(cnt) cnt.innerHTML=`📎 ${total} foto berhasil diunggah`;
+        else{
+          const wrap=document.getElementById('photo-count-wrap');
+          if(wrap&&total>0&&!document.getElementById('photo-count-display')){
+            const p=document.createElement('p');
+            p.id='photo-count-display';
+            p.style.cssText='font-size:12px;color:#16a34a;margin:6px 0 0';
+            p.innerHTML=`📎 ${total} foto berhasil diunggah`;
+            wrap.appendChild(p);
+          }
+        }
+        // Update send button
+        const btn=document.getElementById('btn-ksend');
+        if(btn) btn.textContent=`📤 Kirim Laporan (${total} Foto)`;
+      };
+      reader.readAsDataURL(file);
+    });
+  });
   on('btn-ksend','click',()=>{
     if(S.kRepText.trim()){
-      S.kReps.push({text:S.kRepText,time:fmtT(),photos:S.kPhotos.length});
+      S.kReps.push({text:S.kRepText,time:fmtT(),photos:Object.keys(S.kPhotoData||{}).length});
       mg({kRepSent:true});
     }
   });
-  on('btn-knew','click',()=>mg({kRepSent:false,kRepText:'',kPhotos:[]}));
+  on('btn-knew','click',()=>mg({kRepSent:false,kRepText:'',kPhotos:[],kPhotoData:{}}));
+
+  // ── ADMIN DASH ──
+  all('.adtab',e=>set('adminTab',e.currentTarget.dataset.at));
+  all('.btn-kyb-action',e=>{
+    const btn=e.currentTarget;
+    const isApprove=btn.dataset.kybApprove!==undefined;
+    const id=isApprove?btn.dataset.kybApprove:btn.dataset.kybReject;
+    // Visual feedback only (mock)
+    const card=btn.closest('div[style*="border-radius:14px"]');
+    if(card){
+      const statusDiv=document.createElement('div');
+      statusDiv.style.cssText=`background:${isApprove?'#F0FDF4':'#FEF2F2'};border-radius:10px;padding:10px 12px;text-align:center;font-size:13px;font-weight:600;color:${isApprove?'#166534':'#DC2626'}`;
+      statusDiv.textContent=isApprove?'✅ Sudah Disetujui — Kontraktor Aktif di Marketplace':'❌ Pengajuan Ditolak — Kontraktor Diminta Revisi Dokumen';
+      btn.parentElement.replaceWith(statusDiv);
+    }
+  });
+  all('.btn-freeze',e=>{
+    const id=e.currentTarget.dataset.freezeId;
+    const btn=e.currentTarget;
+    btn.style.background='#F3F4F6';btn.style.color='#6B7280';btn.disabled=true;
+    btn.textContent='✅ Akun sudah dibekukan — tidak dapat login';
+    const card=btn.closest('div[style*="border-radius:14px"]');
+    if(card){
+      // Add frozen badge
+      const badgeWrap=card.querySelector('div[style*="flex-wrap:wrap"]');
+      if(badgeWrap){
+        const frozenBadge=document.createElement('span');
+        frozenBadge.style.cssText='background:#F3F4F6;color:#6B7280;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:700';
+        frozenBadge.textContent='❄️ Akun Dibekukan';
+        badgeWrap.appendChild(frozenBadge);
+      }
+    }
+  });
+  all('.btn-release',e=>{
+    const btn=e.currentTarget;
+    btn.style.background='#DCFCE7';btn.style.color='#166534';btn.disabled=true;
+    btn.textContent='✅ Dana sudah dicairkan ke rekening kontraktor';
+  });
 
   // ── SUPPLIER DASH ──
   all('.sttab',e=>set('sTab',e.currentTarget.dataset.st));
