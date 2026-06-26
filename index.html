@@ -33,10 +33,13 @@ const S={
   user:null,
   authTab:'login',authEmail:'',authPass:'',authName:'',authRole:'konsumen',authError:'',authShowPass:false,
   accounts:[
-    {email:'konsumen@buildmatch.com',password:'123',role:'konsumen',name:'Andi Santoso'},
-    {email:'kontraktor@buildmatch.com',password:'123',role:'kontraktor',name:'PT Karya Nusantara'},
-    {email:'supplier@buildmatch.com',password:'123',role:'supplier',name:'PT Indocement Tunggal'},
-    {email:'admin@buildmatch.com',password:'admin123',role:'admin',name:'Tim Management BuildMatch'},
+    {email:'konsumen@buildmatch.com',password:'123',role:'konsumen',name:'Andi Santoso',tier:'basic',consultLeft:1},
+    {email:'premium@buildmatch.com',password:'123',role:'konsumen',name:'Rina Wijaya',tier:'premium',consultLeft:999},
+    {email:'kontraktor@buildmatch.com',password:'123',role:'kontraktor',name:'PT Karya Nusantara',tier:'basic',bidCount:1},
+    {email:'kontraktorpremium@buildmatch.com',password:'123',role:'kontraktor',name:'Mitra Bangun Jaya',tier:'premium',bidCount:0},
+    {email:'supplier@buildmatch.com',password:'123',role:'supplier',name:'PT Indocement Tunggal',tier:'basic'},
+    {email:'supplierpremium@buildmatch.com',password:'123',role:'supplier',name:'PT Semen Gresik',tier:'premium'},
+    {email:'admin@buildmatch.com',password:'admin123',role:'admin',name:'Tim Management BuildMatch',tier:'admin'},
   ],
   kybStep:1,kybModal:false,
   kybKtp:'',kybNpwp:'',kybSelfie:false,
@@ -44,6 +47,7 @@ const S={
   kybPName:'',kybPVal:'',kybFoto:false,
   kybPreviews:{},
   step:0,project:{},contractor:{},
+  berandaSearch:'',berandaFilter:'Kontraktor',berandaWilayah:'Semua',
   escrowDone:false,escrowStage:'idle',
   cart:[],matTab:'Semen',logCount:3,
   stars:0,hoverStar:0,reviewText:'',reviewChecks:{waktu:false,kualitas:false,komunikasi:false,kebersihan:false},submitted:false,
@@ -94,6 +98,25 @@ const MATS={
     {name:'Genteng Metal',sup:'PT Atap Nusantara',price:'Rp 48.000',unit:'/pcs',badge:null},
   ],
 };
+
+
+// ================================================================
+// ADS + TIER DATA
+// ================================================================
+const ADS_BANNERS=[
+  {brand:'Semen Tiga Roda',tagline:'Kokoh Sejak 1975 — Pilihan No.1 Kontraktor Indonesia',bg:'linear-gradient(135deg,#1E3A5F,#2563EB)',accent:'#93C5FD',emoji:'🏛️',cta:'Beli Sekarang',disc:'Diskon 8% untuk proyek BuildMatch'},
+  {brand:'Atap Baja Ringan Spandek',tagline:'Ringan, Kuat, Anti Karat — 25 Tahun Garansi',bg:'linear-gradient(135deg,#134E4A,#0D9488)',accent:'#5EEAD4',emoji:'🏠',cta:'Cek Harga',disc:'Gratis ongkir Jabodetabek'},
+  {brand:'Keramik Granit Mulia',tagline:'Premium Grade A — Langsung dari Pabrik',bg:'linear-gradient(135deg,#581C87,#9333EA)',accent:'#C4B5FD',emoji:'✨',cta:'Lihat Katalog',disc:'Harga grosir mulai 300 m2'},
+];
+const PREMIUM_CONTRACTORS=[
+  {id:2,init:'MJ',name:'Mitra Bangun Jaya',spec:'Renovasi & Desain Interior',loc:'Bandung',score:92,rating:4.9,rev:83,proj:83},
+  {id:3,init:'BP',name:'Bangun Prima Group',spec:'Infrastruktur & Perumahan',loc:'Surabaya',score:95,rating:4.8,rev:112,proj:112},
+];
+function tierBadge(tier){
+  if(tier==='premium') return`<span style="background:linear-gradient(135deg,#F4B400,#F97316);color:#111;padding:2px 9px;border-radius:99px;font-size:10px;font-weight:800">⭐ PREMIUM</span>`;
+  if(tier==='basic') return`<span style="background:#F3F4F6;color:#6B7280;padding:2px 9px;border-radius:99px;font-size:10px;font-weight:700">FREE</span>`;
+  return '';
+}
 
 const LOGS=[
   {t:'07:30',m:'Tim kontraktor tiba di lokasi. 8 pekerja aktif.',i:'👷'},
@@ -221,7 +244,7 @@ function authPage(){
     ${btnY('🔑 Masuk ke BuildMatch','btn-login')}
     <div style="background:#F9FAFB;border-radius:10px;padding:12px">
       <p style="font-size:11px;font-weight:700;color:#6B7280;margin:0 0 6px">💡 Akun Demo Presentasi:</p>
-      ${S.accounts.slice(0,4).map(a=>`<button data-de="${esc(a.email)}" data-dp="${esc(a.password)}" class="dbtn" style="display:block;width:100%;text-align:left;background:none;border:none;cursor:pointer;padding:3px 0;font-size:12px;color:#374151">→ ${esc(a.email)} / ${a.password} <span style="color:#9CA3AF">(${a.role})</span></button>`).join('')}
+      ${S.accounts.map(a=>`<button data-de="${esc(a.email)}" data-dp="${esc(a.password)}" class="dbtn" style="display:block;width:100%;text-align:left;background:none;border:none;cursor:pointer;padding:3px 0;font-size:12px;color:#374151">→ ${esc(a.email)} / ${a.password} <span style="color:#9CA3AF">(${a.role})</span></button>`).join('')}
     </div>
   </div>`;
 
@@ -311,6 +334,30 @@ function kybPage(){
     </label>`;
   }
 
+  // KYB Payment gate
+  if(S.kybPayModal){
+    return`<div style="position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px">
+      <div style="background:#fff;border-radius:20px;padding:32px;max-width:380px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.25)">
+        <div style="font-size:48px;margin-bottom:12px">💳</div>
+        <h2 style="font-size:20px;font-weight:900;color:#111;margin:0 0 8px">Biaya Verifikasi KYB</h2>
+        <p style="font-size:14px;color:#6B7280;line-height:1.6;margin-bottom:16px">Untuk memulai proses verifikasi kontraktor, diperlukan biaya administrasi sekali bayar.</p>
+        <div style="background:#FFFBEB;border-radius:12px;padding:16px;margin-bottom:16px">
+          <div style="font-size:28px;font-weight:900;color:#111">Rp 200.000</div>
+          <div style="font-size:12px;color:#92400E;margin-top:4px">Biaya validasi berkas (satu kali)</div>
+        </div>
+        <div style="text-align:left;margin-bottom:18px">
+          ${['Pemeriksaan dokumen KTP & NPWP','Validasi NIB ke sistem OSS','Review portofolio proyek','Badge Kontraktor Terverifikasi BuildMatch'].map(x=>`<div style="display:flex;align-items:center;gap:8px;font-size:13px;color:#374151;margin:5px 0"><span style="color:#16a34a;font-size:16px">✓</span>${x}</div>`).join('')}
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <button id="btn-kybpay-cancel" style="padding:12px;border-radius:12px;border:1.5px solid #E5E7EB;background:white;font-weight:700;font-size:14px;cursor:pointer;color:#374151">Nanti Saja</button>
+          <button id="btn-kybpay-confirm" style="padding:12px;border-radius:12px;border:none;background:#F4B400;color:#111;font-weight:800;font-size:14px;cursor:pointer">Bayar & Lanjut →</button>
+        </div>
+        <p style="font-size:11px;color:#9CA3AF;margin-top:12px">Pembayaran aman melalui rekening escrow BuildMatch</p>
+      </div>
+    </div>` + kybPage_inner();
+  }
+  function kybPage_inner(){
+
   const prev=S.kybPreviews||{};
   const can1=S.kybKtp.trim()&&S.kybNpwp.trim()&&(S.kybSelfie||!!prev.selfie);
   const can2=S.kybUsaha.trim()&&S.kybNib.trim()&&(S.kybSiujk||!!prev.siujk);
@@ -383,7 +430,9 @@ function kybPage(){
     </div>
     ${modal}
   </div>`;
-}
+  } // end kybPage_inner
+  return kybPage_inner();
+} // end kybPage
 
 // ================================================================
 // TOP NAV (Consumer)
@@ -723,6 +772,197 @@ function step8(){
     <button id="btn-submit" ${S.stars===0?'disabled':''} style="width:100%;padding:14px;border-radius:12px;border:none;background:${S.stars>0?'#F4B400':'#E5E7EB'};color:${S.stars>0?'#111':'#9CA3AF'};font-weight:700;font-size:15px;cursor:${S.stars>0?'pointer':'not-allowed'}">
       ${S.stars===0?'Pilih Bintang Terlebih Dahulu':'📤 Kirim Ulasan &amp; Selesaikan Proyek'}
     </button>
+  </div>`;
+}
+
+// ================================================================
+// BERANDA BEBAS — MARKETPLACE HOME
+// ================================================================
+function beranda(){
+  const u=S.user;
+  const isPremium=u&&u.tier==='premium';
+  const searchQ=(S.berandaSearch||'').toLowerCase().trim();
+  const searchResults=CONTRACTORS.filter(ct=>{
+    const wilayah=S.berandaWilayah||'Semua';
+    const matchQ=!searchQ||ct.name.toLowerCase().includes(searchQ)||ct.spec.toLowerCase().includes(searchQ)||ct.loc.toLowerCase().includes(searchQ);
+    const matchW=wilayah==='Semua'||ct.loc.includes(wilayah);
+    return matchQ&&matchW;
+  });
+
+  const adsH=ADS_BANNERS.map(a=>`<div style="flex-shrink:0;width:295px;border-radius:14px;overflow:hidden;background:${a.bg};padding:18px;display:flex;flex-direction:column;justify-content:space-between;min-height:130px">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+      <div>
+        <div style="font-size:10px;font-weight:700;color:${a.accent};text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">📢 IKLAN SUPPLIER PREMIUM</div>
+        <div style="font-size:16px;font-weight:900;color:#fff;line-height:1.2">${a.brand}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.8);margin-top:3px;line-height:1.4">${a.tagline}</div>
+      </div>
+      <div style="font-size:32px;flex-shrink:0">${a.emoji}</div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;gap:8px">
+      <div style="background:rgba(255,255,255,.15);color:${a.accent};padding:3px 9px;border-radius:7px;font-size:10px;font-weight:600;flex:1">${a.disc}</div>
+      <button style="background:${a.accent};color:#111;border:none;padding:6px 13px;border-radius:7px;font-size:11px;font-weight:800;cursor:pointer;flex-shrink:0">${a.cta}</button>
+    </div>
+  </div>`).join('');
+
+  const premiumCtrsH=PREMIUM_CONTRACTORS.map(ct=>`<div style="background:#fff;border-radius:14px;border:2px solid #FCD34D;padding:16px;min-width:220px;flex-shrink:0">
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px">
+      <div style="width:42px;height:42px;border-radius:11px;background:#111;color:#F4B400;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;flex-shrink:0">${ct.init}</div>
+      <div style="min-width:0"><div style="font-weight:800;font-size:13px;color:#111;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${ct.name}</div><div style="font-size:11px;color:#6B7280">${ct.spec}</div></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">${ring(ct.score)}<div><div style="font-size:11px;color:#6B7280">Trust Score</div><div style="font-size:12px;font-weight:700;color:#111">${ct.score}/100</div></div></div>
+    <div style="display:flex;align-items:center;gap:4px;margin-bottom:8px"><span style="color:#F4B400;font-size:12px">${'★'.repeat(Math.round(ct.rating))}</span><span style="font-size:11px;color:#6B7280">${ct.rating} (${ct.rev})</span></div>
+    ${tierBadge('premium')}
+    <button data-cid="${ct.id}" class="btn-pick" style="margin-top:10px;width:100%;padding:8px;border-radius:9px;border:none;background:#F4B400;color:#111;font-size:12px;font-weight:700;cursor:pointer">Pilih Kontraktor →</button>
+  </div>`).join('');
+
+  return`<div style="min-height:100vh;background:#F5F5F5">
+    <!-- MARKETPLACE NAV -->
+    <div style="background:#fff;border-bottom:1px solid #E5E7EB;padding:10px 20px;position:sticky;top:0;z-index:100">
+      <div style="display:flex;align-items:center;gap:12px;max-width:1000px;margin:0 auto">
+        ${logo('sm')}
+        <div style="flex:1;overflow-x:auto;display:flex;gap:4px">
+          ${[{id:'beranda',l:'🏠 Beranda'},{id:'cari',l:'🔍 Cari'},{id:'material',l:'🧱 Material'},{id:'konsultasi',l:'💼 Konsultasi'},{id:'akun',l:'👤 Dashboard'}].map(n=>`<button data-bnav="${n.id}" class="btn-bnav" style="white-space:nowrap;font-size:12px;font-weight:600;border:none;background:none;cursor:pointer;padding:6px 10px;border-radius:8px;color:${S.berandaNav===n.id?'#111':'#6B7280'};background:${S.berandaNav===n.id?'#FEF3C7':'transparent'}">${n.l}</button>`).join('')}
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+          ${u&&u.tier?tierBadge(u.tier):''}
+          <span style="font-size:12px;color:#6B7280;font-weight:600">👤 ${esc(u&&u.name?u.name.split(' ')[0]:'User')}</span>
+          <button id="btn-logout" style="font-size:12px;font-weight:700;padding:6px 12px;border-radius:99px;border:1.5px solid #E5E7EB;background:white;color:#6B7280;cursor:pointer">⏏ Keluar</button>
+        </div>
+      </div>
+    </div>
+
+    <div style="max-width:1000px;margin:0 auto;padding:20px 16px 80px">
+
+    <!-- ADS BANNER STRIP -->
+    <div style="background:#fff;border-radius:16px;border:1px solid #E5E7EB;padding:14px;margin-bottom:20px;overflow:hidden">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <span style="background:#DC2626;color:#fff;font-size:10px;font-weight:800;padding:2px 8px;border-radius:4px">IKLAN</span>
+        <span style="font-size:12px;color:#6B7280;font-weight:600">Supplier Premium BuildMatch</span>
+        <span style="font-size:11px;color:#9CA3AF;margin-left:auto">🖱️ Hover untuk berhenti</span>
+      </div>
+      <div style="overflow:hidden">
+        <div style="display:flex;gap:14px;width:max-content;animation:marquee 22s linear infinite" onmouseover="this.style.animationPlayState='paused'" onmouseout="this.style.animationPlayState='running'">
+          ${adsH+adsH}
+        </div>
+      </div>
+    </div>
+    <style>@keyframes marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}</style>
+
+    <!-- SEARCH BAR -->
+    <div style="background:#fff;border-radius:16px;border:1px solid #E5E7EB;padding:18px;margin-bottom:20px">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+        <div style="flex:2;min-width:180px">
+          <label style="font-size:11px;font-weight:700;color:#6B7280;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">Cari di BuildMatch</label>
+          <div style="position:relative">
+            <input id="beranda-search" value="${esc(S.berandaSearch||'')}" placeholder="Nama kontraktor, spesialisasi, atau material..." style="width:100%;border:1.5px solid #E5E7EB;border-radius:10px;padding:10px 14px 10px 38px;font-size:14px">
+            <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:15px">🔍</span>
+          </div>
+        </div>
+        <div style="min-width:130px">
+          <label style="font-size:11px;font-weight:700;color:#6B7280;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">Kategori</label>
+          <select id="beranda-filter" style="width:100%;border:1.5px solid #E5E7EB;border-radius:10px;padding:10px 14px;font-size:14px;background:white;color:#111">
+            ${['Kontraktor','Supplier Material','Ahli/Konsultan'].map(o=>`<option ${(S.berandaFilter||'Kontraktor')===o?'selected':''}>${o}</option>`).join('')}
+          </select>
+        </div>
+        <div style="min-width:130px">
+          <label style="font-size:11px;font-weight:700;color:#6B7280;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">Wilayah</label>
+          <select id="beranda-wilayah" style="width:100%;border:1.5px solid #E5E7EB;border-radius:10px;padding:10px 14px;font-size:14px;background:white;color:#111">
+            ${['Semua','Jakarta','Bandung','Surabaya','Bali','Yogyakarta','Makassar'].map(o=>`<option ${(S.berandaWilayah||'Semua')===o?'selected':''}>${o}</option>`).join('')}
+          </select>
+        </div>
+        <button id="btn-do-search" style="padding:10px 20px;border-radius:10px;border:none;background:#111;color:#F4B400;font-weight:700;font-size:14px;cursor:pointer;flex-shrink:0">Cari</button>
+      </div>
+      ${searchQ?`<p style="font-size:12px;color:#6B7280;margin:10px 0 0">Menampilkan <strong>${searchResults.length}</strong> hasil untuk "<strong>${esc(S.berandaSearch)}</strong>"</p>`:''}
+    </div>
+
+    ${searchQ?`
+    <!-- SEARCH RESULTS -->
+    <div style="margin-bottom:20px">
+      <h2 style="font-size:16px;font-weight:800;color:#111;margin:0 0 14px">Hasil Pencarian</h2>
+      ${searchResults.length?`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px">
+        ${searchResults.map(ct=>`<div style="background:#fff;border-radius:14px;border:1.5px solid ${ct.tier==='premium'?'#FCD34D':'#E5E7EB'};padding:16px">
+          <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:10px">
+            <div style="width:44px;height:44px;border-radius:11px;background:#111;color:#F4B400;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;flex-shrink:0">${ct.init}</div>
+            <div style="flex:1;min-width:0"><div style="font-weight:800;font-size:13px;color:#111">${ct.name}</div><div style="font-size:11px;color:#6B7280">${ct.spec}</div><div style="margin-top:4px">${tierBadge(ct.tier||'basic')}</div></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:4px;margin-bottom:8px"><span style="color:#F4B400;font-size:13px">${'★'.repeat(Math.round(ct.rating))}</span><span style="font-size:11px;color:#6B7280">${ct.rating} · 📍${ct.loc}</span></div>
+          <div style="font-size:13px;font-weight:800;color:#111;margin-bottom:10px">${ct.price}</div>
+          <button data-cid="${ct.id}" class="btn-pick" style="width:100%;padding:9px;border-radius:9px;border:none;background:#111;color:#F4B400;font-size:13px;font-weight:700;cursor:pointer">Pilih & Rekrut →</button>
+        </div>`).join('')}
+      </div>`:`<div style="background:#fff;border-radius:14px;border:1px solid #E5E7EB;padding:32px;text-align:center;color:#9CA3AF;font-size:14px">Tidak ada hasil ditemukan untuk pencarian tersebut.</div>`}
+    </div>`:`
+    <!-- PREMIUM KONTRAKTOR REKOMENDASI -->
+    <div style="margin-bottom:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <h2 style="font-size:16px;font-weight:800;color:#111;margin:0">⭐ Kontraktor Premium Terekomendasi</h2>
+        <span style="font-size:11px;color:#92400E;background:#FEF3C7;padding:3px 10px;border-radius:99px;font-weight:700">Iklan Berbayar</span>
+      </div>
+      <div style="display:flex;gap:14px;overflow-x:auto;padding-bottom:8px">${premiumCtrsH}</div>
+    </div>
+
+    <!-- ALL CONTRACTORS -->
+    <div style="margin-bottom:20px">
+      <h2 style="font-size:16px;font-weight:800;color:#111;margin:0 0 14px">🏗️ Semua Kontraktor Terverifikasi</h2>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px">
+        ${CONTRACTORS.map(ct=>`<div style="background:#fff;border-radius:14px;border:1.5px solid ${ct.tier==='premium'?'#FCD34D':'#E5E7EB'};padding:16px">
+          <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:10px">
+            <div style="width:44px;height:44px;border-radius:11px;background:#111;color:#F4B400;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;flex-shrink:0">${ct.init}</div>
+            <div style="flex:1;min-width:0"><div style="font-weight:800;font-size:13px;color:#111">${ct.name}</div><div style="font-size:11px;color:#6B7280">${ct.spec}</div><div style="margin-top:4px">${tierBadge(ct.tier||'basic')}</div></div>
+            ${bdg('✅ Verified','#DCFCE7','#166534')}
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">${ring(ct.score)}<div style="flex:1"><div style="font-size:11px;color:#6B7280">Trust Score ${ct.score}/100</div>${pbar(ct.score,ct.score>=90?'#16a34a':'#F4B400',5)}</div></div>
+          <div style="display:flex;align-items:center;gap:4px;margin-bottom:8px"><span style="color:#F4B400;font-size:12px">${'★'.repeat(Math.round(ct.rating))}</span><span style="font-size:11px;color:#6B7280">${ct.rating} · ${ct.proj} proyek · 📍${ct.loc}</span></div>
+          <div style="font-size:14px;font-weight:800;color:#111;margin-bottom:10px">${ct.price}</div>
+          <button data-cid="${ct.id}" class="btn-pick" style="width:100%;padding:9px;border-radius:9px;border:none;background:#111;color:#F4B400;font-size:13px;font-weight:700;cursor:pointer">Pilih & Rekrut →</button>
+        </div>`).join('')}
+      </div>
+    </div>`}
+
+    <!-- KONSULTASI AHLI -->
+    <div style="background:#fff;border-radius:16px;border:1px solid #E5E7EB;padding:20px;margin-bottom:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+        <h2 style="font-size:16px;font-weight:800;color:#111;margin:0">💼 Konsultasi Ahli Konstruksi</h2>
+        ${isPremium?`<span style="background:#DCFCE7;color:#166534;padding:4px 12px;border-radius:99px;font-size:12px;font-weight:700">✅ Premium — Gratis Tak Terbatas</span>`:
+        `<span style="background:#FEF9C3;color:#854D0E;padding:4px 12px;border-radius:99px;font-size:12px;font-weight:700">⚠️ Sisa sesi gratis: ${u&&u.consultLeft!=null?u.consultLeft:0}x</span>`}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px">
+        ${[{icon:'🏛️',name:'Arsitek Residensial',spec:'Desain rumah tinggal'},{icon:'🏢',name:'Konsultan Sipil',spec:'Struktur & pondasi'},{icon:'⚡',name:'Ahli MEP',spec:'Mekanikal, Elektrikal, Plumbing'},{icon:'🌿',name:'Desainer Interior',spec:'Tata ruang & estetika'}].map(a=>`
+          <div style="background:#F9FAFB;border-radius:12px;padding:14px;border:1px solid #E5E7EB;text-align:center">
+            <div style="font-size:28px;margin-bottom:6px">${a.icon}</div>
+            <div style="font-size:13px;font-weight:700;color:#111">${a.name}</div>
+            <div style="font-size:11px;color:#6B7280;margin-top:2px;margin-bottom:10px">${a.spec}</div>
+            ${isPremium
+              ?`<button id="btn-open-chat" style="width:100%;padding:7px;border-radius:8px;border:none;background:#F4B400;color:#111;font-size:12px;font-weight:700;cursor:pointer">💬 Konsultasi Gratis</button>`
+              :(u&&u.consultLeft>0
+                ?`<button id="btn-open-chat" style="width:100%;padding:7px;border-radius:8px;border:none;background:#111;color:#F4B400;font-size:12px;font-weight:700;cursor:pointer">💬 Mulai Konsultasi (${u.consultLeft}x)</button>`
+                :`<button data-upgrade="konsumen" class="btn-upgrade" style="width:100%;padding:7px;border-radius:8px;border:1.5px solid #F4B400;background:#FFFBEB;color:#92400E;font-size:11px;font-weight:700;cursor:pointer">⭐ Upgrade Premium</button>`)}
+          </div>`).join('')}
+      </div>
+    </div>
+
+    <!-- CTA MULAI PROYEK -->
+    <div style="background:linear-gradient(135deg,#111,#1F2937);border-radius:20px;padding:28px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+      <div>
+        <div style="font-size:11px;font-weight:700;color:#F4B400;text-transform:uppercase;letter-spacing:.05em">🏠 Punya Rencana Konstruksi?</div>
+        <div style="font-size:20px;font-weight:900;color:#fff;margin-top:4px;line-height:1.3">Mulai Bangun Rumah Impian Anda<br>Bersama Kontraktor Terverifikasi</div>
+        <div style="font-size:12px;color:#9CA3AF;margin-top:6px">Dana terlindungi Escrow · Progres real-time · 12.400+ proyek selesai</div>
+        ${isPremium?`<div style="margin-top:8px;background:rgba(244,180,0,.15);border-radius:8px;padding:6px 12px;display:inline-block;font-size:12px;color:#F4B400;font-weight:600">⭐ Anda mendapatkan diskon supplier premium & konsultasi gratis tak terbatas!</div>`:''}
+      </div>
+      <button id="btn-mulai-proyek" style="background:#F4B400;color:#111;border:none;padding:14px 28px;border-radius:12px;font-weight:800;font-size:15px;cursor:pointer;flex-shrink:0;white-space:nowrap">🚀 Input Proyek Baru →</button>
+    </div>
+
+    <!-- UPGRADE BANNER for basic users -->
+    ${!isPremium?`<div style="margin-top:20px;background:linear-gradient(135deg,#FEF3C7,#FFF8E1);border:2px solid #FCD34D;border-radius:16px;padding:20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+      <div style="font-size:36px">⭐</div>
+      <div style="flex:1;min-width:200px">
+        <div style="font-size:15px;font-weight:800;color:#111">Upgrade ke BuildMatch Premium</div>
+        <div style="font-size:13px;color:#92400E;margin-top:4px">Konsultasi ahli gratis tak terbatas · Diskon supplier premium · Prioritas matching kontraktor</div>
+      </div>
+      <button data-upgrade="konsumen" class="btn-upgrade" style="background:#111;color:#F4B400;border:none;padding:12px 24px;border-radius:10px;font-weight:800;font-size:14px;cursor:pointer;flex-shrink:0">Upgrade Sekarang</button>
+    </div>`:''}
+
+    </div><!-- /max-width -->
+    ${chatWidget()}
   </div>`;
 }
 
@@ -1155,10 +1395,19 @@ function sendChatMsg(txt){
 function buildApp(){
   const u=S.user;
   if(!u) return authPage();
-  if(u.role==='kontraktor'&&!u.isVerified) return kybPage();
+  if(u.role==='kontraktor'&&!u.isVerified){
+    // Trigger payment modal on first KYB visit
+    if(!S.kybPayModal&&!S._kybPayShown){
+      S._kybPayShown=true;
+      setTimeout(()=>{S.kybPayModal=true;render();},300);
+    }
+    return kybPage();
+  }
   if(u.role==='supplier') return dashS();
   if(u.role==='kontraktor') return dashK();
   if(u.role==='admin') return dashAdmin();
+  // Konsumen: show beranda if step===0 and no active project input
+  if(S.step===0&&!S._projectStarted) return beranda();
   const STEPS=[step0,step1,step2,step3,step4,step5,step6,step7,step8];
   return`<div style="min-height:100vh;background:#F5F5F5;display:flex;flex-direction:column">
     ${topNav()}
@@ -1229,7 +1478,7 @@ function bindEvents(){
   const on=(id,ev,fn)=>{const el=$(id);if(el)el.addEventListener(ev,fn);};
   const all=(sel,fn,ev='click')=>document.querySelectorAll(sel).forEach(el=>el.addEventListener(ev,fn));
 
-  const RESET={user:null,step:0,project:{},contractor:{},escrowDone:false,escrowStage:'idle',cart:[],matTab:'Semen',logCount:3,stars:0,hoverStar:0,reviewText:'',reviewChecks:{waktu:false,kualitas:false,komunikasi:false,kebersihan:false},submitted:false,kTab:'proyek',kRepText:'',kPhotos:[],kPhotoData:{},kRepSent:false,kReps:[],sTab:'pesanan',adminTab:'overview',kybPreviews:{},chatOpen:false,chatTarget:null,chatMsgs:{},chatInput:'',chatTyping:false,chatUnread:0};
+  const RESET={user:null,step:0,project:{},contractor:{},escrowDone:false,escrowStage:'idle',cart:[],matTab:'Semen',logCount:3,stars:0,hoverStar:0,reviewText:'',reviewChecks:{waktu:false,kualitas:false,komunikasi:false,kebersihan:false},submitted:false,kTab:'proyek',kRepText:'',kPhotos:[],kPhotoData:{},kRepSent:false,kReps:[],sTab:'pesanan',adminTab:'overview',kybPreviews:{},_projectStarted:false,_kybPayShown:false,berandaSearch:'',berandaNav:'beranda',chatOpen:false,chatTarget:null,chatMsgs:{},chatInput:'',chatTyping:false,chatUnread:0};
 
   // ── AUTH ──
   on('tab-login','click',()=>mg({authTab:'login',authError:''}));
@@ -1531,6 +1780,72 @@ function bindEvents(){
 
   // Re-bind KYB file inputs after every render
   if(typeof bindKybFileInputs==='function') bindKybFileInputs();
+
+  // ── BERANDA ──
+  const bsEl=document.getElementById('beranda-search');
+  if(bsEl){
+    bsEl.addEventListener('input',e=>{S.berandaSearch=e.target.value;});
+    bsEl.addEventListener('keydown',e=>{if(e.key==='Enter'){S.berandaSearch=e.target.value;render();}});
+  }
+  const bfEl=document.getElementById('beranda-filter');
+  if(bfEl) bfEl.addEventListener('change',e=>{S.berandaFilter=e.target.value;});
+  const bwEl=document.getElementById('beranda-wilayah');
+  if(bwEl) bwEl.addEventListener('change',e=>{S.berandaWilayah=e.target.value;});
+  const bsBtn=document.getElementById('btn-do-search');
+  if(bsBtn) bsBtn.addEventListener('click',()=>{
+    const el=document.getElementById('beranda-search');
+    if(el) S.berandaSearch=el.value;
+    const fe=document.getElementById('beranda-filter');
+    if(fe) S.berandaFilter=fe.value;
+    const we=document.getElementById('beranda-wilayah');
+    if(we) S.berandaWilayah=we.value;
+    render();
+  });
+  // Beranda nav tabs
+  document.querySelectorAll('.btn-bnav').forEach(btn=>btn.addEventListener('click',e=>{
+    set('berandaNav',e.currentTarget.dataset.bnav);
+  }));
+  // "Mulai Proyek" from beranda
+  const mpBtn=document.getElementById('btn-mulai-proyek');
+  if(mpBtn) mpBtn.addEventListener('click',()=>mg({_projectStarted:true,step:0}));
+  // open chat from konsultasi
+  const ocBtn=document.getElementById('btn-open-chat');
+  if(ocBtn) ocBtn.addEventListener('click',()=>{
+    const u=S.user;
+    if(u&&u.tier==='basic'&&u.consultLeft<=0){alert('Sesi konsultasi gratis Anda habis. Upgrade ke Premium untuk akses tak terbatas.');return;}
+    if(u&&u.tier==='basic'&&u.consultLeft>0){
+      // deduct one session
+      const idx=S.accounts.findIndex(a=>a.email===u.email);
+      if(idx>=0){S.accounts[idx].consultLeft--;S.user.consultLeft--;}
+    }
+    mg({chatOpen:true,chatTarget:'konsultan',chatUnread:0});
+  });
+  // Upgrade buttons
+  document.querySelectorAll('.btn-upgrade').forEach(btn=>btn.addEventListener('click',e=>{
+    const role=e.currentTarget.dataset.upgrade||'konsumen';
+    // Simulate upgrade
+    const idx=S.accounts.findIndex(a=>a.email===S.user?.email);
+    if(idx>=0){S.accounts[idx].tier='premium';S.accounts[idx].consultLeft=999;}
+    if(S.user){S.user.tier='premium';S.user.consultLeft=999;}
+    alert('🎉 Selamat! Akun Anda berhasil diupgrade ke BuildMatch Premium!');
+    render();
+  }));
+
+  // ── KYB PAYMENT MODAL ──
+  const kybPayCancelBtn=document.getElementById('btn-kybpay-cancel');
+  if(kybPayCancelBtn) kybPayCancelBtn.addEventListener('click',()=>{set('kybPayModal',false);});
+  const kybPayConfirmBtn=document.getElementById('btn-kybpay-confirm');
+  if(kybPayConfirmBtn) kybPayConfirmBtn.addEventListener('click',()=>{
+    mg({kybPayModal:false,_kybPayShown:true});
+    // Show success briefly then continue
+    setTimeout(()=>{
+      const note=document.createElement('div');
+      note.style.cssText='position:fixed;top:20px;right:20px;z-index:99999;background:#16a34a;color:white;padding:12px 20px;border-radius:12px;font-weight:700;font-size:14px;box-shadow:0 4px 20px rgba(0,0,0,.2)';
+      note.textContent='✅ Pembayaran Rp 200.000 berhasil! Silakan lanjutkan verifikasi.';
+      document.body.appendChild(note);
+      setTimeout(()=>note.remove(),3500);
+    },100);
+  });
 }
 
 render();
